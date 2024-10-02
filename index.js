@@ -92,8 +92,6 @@ app.get('/api/v1/cars', async (req, res) => {
       const { count, rows } = await cars.findAndCountAll({ where, offset, limit: +limit, raw: true});
       const pages = Math.ceil(count / limit);
 
-      console.log(rows);
-
       if (rows.length === 0) {
           return res.status(204).send();
       }
@@ -114,21 +112,25 @@ app.get('/api/v1/cars', async (req, res) => {
    }
 });
 
-app.get('api/v1/cars/:id', async (req, res) => {
+app.get('/api/v1/cars/:id', async (req, res) => {
    try{
 
       const id = req.params.id;
 
-      const car = cars.findOne({ where: { id }, raw: true });
+      const car = await cars.findOne({ where: { id }, raw: true });
       if (!car) {
          return res.status(404).json({ error: "car not found" });
       }
       
-      const items = await cars_items.findAll({ where: { carId: car.id }, raw: true });
+      const items = await cars_items.findAll({ where: { carId: id }, raw: true });
+
+      console.log(car);
 
       car["items"] = items.map(item => item.name);
       delete car.createdAt;
       delete car.updatedAt;
+
+      return res.status(200).json(car);
 
    } catch (err){
       return serverError(res);
