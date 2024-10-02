@@ -124,8 +124,6 @@ app.get('/api/v1/cars/:id', async (req, res) => {
       
       const items = await cars_items.findAll({ where: { carId: id }, raw: true });
 
-      console.log(car);
-
       car["items"] = items.map(item => item.name);
       delete car.createdAt;
       delete car.updatedAt;
@@ -134,5 +132,58 @@ app.get('/api/v1/cars/:id', async (req, res) => {
 
    } catch (err){
       return serverError(res);
+   }
+});
+
+app.patch('/api/v1/cars/:id', async (req, res) => {
+   try {
+      const id = parseInt(req.params.id);
+      const { brand, model, year, items } = req.body;
+
+      if (!brand && !model && !year && !items) {
+         return res.status(200).send();
+      }
+
+      const car = await cars.findOne({ where: { id } });
+      if (!car) {
+         return res.status(404).json({ error: "car not found" });
+      }
+
+
+      if (brand) car.brand = brand;
+      if (model) car.model = model;
+      if (year) {
+         const currentYear = new Date().getFullYear();
+         if (year < currentYear - 10 || year > currentYear) 
+             return res.status(400).json({error: `year should be between ${currentYear - 10} and ${currentYear}`});
+         car.year = year;
+      }
+
+      const otherCar = await cars.findOne({ where: { brand: car.brand, model: car.model, year: car.year }, raw: true });
+      if (otherCar && otherCar.id != id) {
+         return res.status(409).json({ error: "there is already a car with this data" });
+      }
+
+      await car.save();
+
+      if (items) {
+         await cars_items.destroy({ where: { carId: id } });
+
+         
+         const uniqueItems = items.reduce((acc, item) => {
+            if (!acc.includes(item)) acc.push(item);
+            return acc;
+         }, []);
+         uniqueItems.forEach(async item => {
+            await cars_items.create({ name: item, carId: id });
+         });
+
+      }
+
+      res.status(204).send();
+
+   } catch (err) {
+      console.log(err);
+      serverError(res);
    }
 });
