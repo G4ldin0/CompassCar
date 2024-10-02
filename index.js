@@ -187,3 +187,23 @@ app.patch('/api/v1/cars/:id', async (req, res) => {
       serverError(res);
    }
 });
+
+app.delete('/api/v1/cars/:id', async (req, res) => {
+   try {
+      const id = parseInt(req.params.id);
+
+      const car = await cars.findOne({ where: { id } });
+      if (!car) {
+         return res.status(404).json({ error: "car not found" });
+      }
+
+      await cars_items.destroy({ where: { carId: id } });
+      await car.destroy();
+
+      res.status(204).send();
+
+   } catch (err) {
+      console.log(err);
+      serverError(res);
+   }
+});
