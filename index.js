@@ -75,3 +75,38 @@ app.post('/api/v1/cars', async (req, res) => {
       serverError(res);
    }
 });
+
+app.get('/api/v1/cars', async (req, res) => {
+   try {
+      let { page = 1, limit = 5, brand, model, year } = req.query;
+      limit = Math.min(limit, 10);
+      if (limit < 1) limit = 5;
+
+      const offset = (page - 1) * limit;
+
+      const where = {};
+      if (brand) where.brand = brand;
+      if (model) where.model = model;
+      if (year) where.year = year;
+
+      const { count, rows } = await cars.findAndCountAll({ where, offset, limit: +limit, raw: true});
+      const pages = Math.ceil(count / limit);
+
+      if (rows.length === 0) {
+         return res.status(204);
+      }
+
+      await Promise.all(rows.map(async car => {
+         const items = await cars_items.findAll({ where: { carId: car.id }, raw: true });
+
+         car["items"] = items.map(item => item.name);
+         delete car.createdAt;
+         delete car.updatedAt;
+      }));
+
+      res.status(200).json({ count, pages, data: rows });
+   } catch (err) {
+      console.log(err);
+      serverError(res);
+   }
+});

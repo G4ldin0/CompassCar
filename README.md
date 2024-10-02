@@ -21,7 +21,7 @@
 3. Inicie o sistema:
    - Navegue até o diretório do projeto no terminal.
    - Execute o comando para iniciar o sistema:
-     
+
      ```sh
      npm start
      ```
