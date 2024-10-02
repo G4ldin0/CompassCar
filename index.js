@@ -22,7 +22,7 @@ const cars_items = require('./models/cars_items');
 const app = express();
 
 // Sync Database
-conn.sync({force: true}).then(() => {
+conn.sync().then(() => {
    console.log('Database connected');
    app.listen(3000, () => {
       console.log('Server running on localhost:3000');
@@ -92,9 +92,12 @@ app.get('/api/v1/cars', async (req, res) => {
       const { count, rows } = await cars.findAndCountAll({ where, offset, limit: +limit, raw: true});
       const pages = Math.ceil(count / limit);
 
+      console.log(rows);
+
       if (rows.length === 0) {
-         return res.status(204);
+          return res.status(204).send();
       }
+
 
       await Promise.all(rows.map(async car => {
          const items = await cars_items.findAll({ where: { carId: car.id }, raw: true });
@@ -108,5 +111,26 @@ app.get('/api/v1/cars', async (req, res) => {
    } catch (err) {
       console.log(err);
       serverError(res);
+   }
+});
+
+app.get('api/v1/cars/:id', async (req, res) => {
+   try{
+
+      const id = req.params.id;
+
+      const car = cars.findOne({ where: { id }, raw: true });
+      if (!car) {
+         return res.status(404).json({ error: "car not found" });
+      }
+      
+      const items = await cars_items.findAll({ where: { carId: car.id }, raw: true });
+
+      car["items"] = items.map(item => item.name);
+      delete car.createdAt;
+      delete car.updatedAt;
+
+   } catch (err){
+      return serverError(res);
    }
 });
