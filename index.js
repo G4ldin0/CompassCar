@@ -35,3 +35,43 @@ app.use(express.urlencoded({extended: true}));
 
 
 // Routes
+app.post('/api/v1/cars', async (req, res) => {
+   try {
+      const { brand, model, year, items } = req.body;
+
+      if (!brand || !model || !year || !items) {
+         const missingFields = [];
+         if (!brand) missingFields.push('brand');
+         if (!model) missingFields.push('model');
+         if (!year) missingFields.push('year');
+         if (!items) missingFields.push('items');
+          return res.status(400).json({error: `${missingFields.join(', ')} ${missingFields.length > 1 ? 'are' : 'is'} required`});
+      }
+
+      const currentYear = new Date().getFullYear();
+      if (year < currentYear - 10 || year > currentYear) {
+          return res.status(400).json({error: `year should be between ${currentYear - 10} and ${currentYear}`});
+      }
+
+      const existe = await cars.findOne({ where: { brand, model, year } });
+      if (existe) {
+         return res.status(409).json({ error: "there is already a car with this data" });
+      }
+
+      const car = await cars.create({ brand, model, year });
+
+      const uniqueItems = items.reduce((acc, item) => {
+         if (!acc.includes(item)) acc.push(item);
+         return acc;
+      }, []);
+      uniqueItems.forEach(async item => {
+         await cars_items.create({ name: item, carId: car.id });
+      });
+
+      res.status(201).json({id: car.id});
+      
+   } catch (err) {
+      console.log(err);
+      serverError(res);
+   }
+});
